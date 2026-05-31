@@ -1,0 +1,16 @@
+{
+  "name": "Todo",
+  "short_name": "Todo",
+  "start_url": "todo.html",
+  "display": "standalone",
+  "background_color": "#f8f9fa",
+  "theme_color": "#5a6e82",
+  "description": "极简待办事项",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%235a6e82'/><text x='50' y='68' text-anchor='middle' font-size='48'>❄</text></svg>",
+      "sizes": "100x100",
+      "type": "image/svg+xml"
+    }
+  ]
+}

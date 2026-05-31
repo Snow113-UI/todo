@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<title>Todo</title>
+<style>
+  :root {
+    --bg:           #f7f8fa;
+    --card-bg:      #ffffff;
+    --text:         #2c3e50;
+    --text-light:   #8e99a4;
+    --border:       #e8ecf1;
+    --divider:      #eef1f5;
+    --accent:       #879aab;
+    --accent-soft:  #dce4ec;
+    --accent-bg:    #f3f6f9;
+    --danger:       #c0a8a8;
+    --danger-hover: #a88888;
+    --snowflake:    #bcc8d4;
+    --timer-bg:     #f2f4f7;
+    --tomato:       #c49580;
+    --shadow:       0 1px 3px rgba(0,0,0,.04);
+    --radius:       8px;
+    --transition:   .18s ease;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+    user-select: none;
+    overflow: hidden;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 1000px;
+    height: 90vh;
+    min-height: 660px;
+    background: var(--card-bg);
+    border-radius: 16px;
+    box-shadow: 0 2px 24px rgba(0,0,0,.05);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ---- Main row (todo + calendar) ---- */
+  .main-row {
+    flex: 80;
+    display: flex;
+    overflow: hidden;
+    transition: flex .35s ease;
+  }
+  .health-collapsed .main-row {
+    flex: 100;
+  }
+
+  /* ---- Health Bar (top, 20%) ---- */
+  .health-bar {
+    flex: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--divider);
+    overflow: visible;
+    transition: flex .35s ease, padding .35s ease, border .35s ease;
+    position: relative;
+    z-index: 2;
+    background: var(--card-bg);
+  }
+  .health-collapsed .health-bar {
+    flex: 0;
+    padding: 0 24px;
+    border-bottom: none;
+    overflow: visible;
+  }
+  .health-bar-inner {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow: visible;
+  }
+  .health-collapsed .health-bar-inner {
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Water cups */
+  .water-tracker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .cup {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding: 4px;
+    transition: transform .3s ease;
+  }
+  .cup:hover { transform: scale(1.12); }
+  .cup:active { transform: scale(.92); }
+
+  /* The glass */
+  .cup-glass {
+    width: 30px; height: 40px;
+    border: 3px solid #8cc4ee;
+    border-top: 2px solid #a3d2f2;
+    border-radius: 4px 4px 12px 12px;
+    position: relative;
+    overflow: hidden;
+    background: rgba(180,215,240,.1);
+    transition: all .35s ease;
+  }
+  .cup.filled .cup-glass {
+    border-color: #5aacdf;
+    background: rgba(160,210,240,.15);
+  }
+
+  /* The water inside */
+  .cup-water {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 0;
+    background: linear-gradient(to top, #0d3b6e, #1858a8, #1e6cc8);
+    border-radius: 0 0 9px 9px;
+    transition: height .5s cubic-bezier(.34,1.56,.64,1);
+  }
+  .cup.filled .cup-water {
+    height: 78%;
+  }
+
+  /* Water surface wave */
+  .cup-water::before {
+    content: '';
+    position: absolute;
+    top: -4px; left: -20%;
+    width: 140%; height: 10px;
+    background: rgba(130,200,240,.6);
+    border-radius: 45%;
+    animation: waterWave 1.8s ease-in-out infinite;
+    opacity: 0;
+    transition: opacity .3s;
+  }
+  .cup.filled .cup-water::before {
+    opacity: 1;
+  }
+  @keyframes waterWave {
+    0%, 100% { transform: translateX(-5%) translateY(0); }
+    25%  { transform: translateX(2%) translateY(-2px); }
+    50%  { transform: translateX(-3%) translateY(1px); }
+    75%  { transform: translateX(4%) translateY(-2px); }
+  }
+
+  /* Second wave layer for depth */
+  .cup-water::after {
+    content: '';
+    position: absolute;
+    top: -2px; left: -15%;
+    width: 130%; height: 6px;
+    background: rgba(160,220,250,.35);
+    border-radius: 50%;
+    animation: waterWave2 2.2s ease-in-out infinite;
+    opacity: 0;
+    transition: opacity .3s;
+  }
+  .cup.filled .cup-water::after {
+    opacity: 1;
+  }
+  @keyframes waterWave2 {
+    0%, 100% { transform: translateX(3%) translateY(1px); }
+    33%  { transform: translateX(-4%) translateY(-2px); }
+    66%  { transform: translateX(2%) translateY(-1px); }
+  }
+
+  /* Splash droplets on click */
+  .cup.filled .cup-glass::before {
+    content: '';
+    position: absolute;
+    top: -6px; left: 50%;
+    width: 4px; height: 4px;
+    background: #3b8ede;
+    border-radius: 50%;
+    animation: droplet1 .5s ease-out forwards;
+    box-shadow:
+      8px 4px 0 #2d7ccc,
+      -6px 2px 0 #4a9ee8,
+      3px -2px 0 #1e6cc8;
+  }
+  @keyframes droplet1 {
+    0%   { transform: translate(-50%,0) scale(.5); opacity: .9; }
+    100% { transform: translate(-50%,-18px) scale(1.5); opacity: 0; }
+  }
+
+  .cup.filled .cup-glass::after {
+    content: '';
+    position: absolute;
+    top: -3px; left: 40%;
+    width: 3px; height: 3px;
+    background: #5aacdf;
+    border-radius: 50%;
+    animation: droplet2 .55s ease-out .1s forwards;
+    box-shadow:
+      -5px 6px 0 #3b8ede,
+      7px 2px 0 #2d7ccc;
+  }
+  @keyframes droplet2 {
+    0%   { transform: translate(-50%,0) scale(.4); opacity: .8; }
+    100% { transform: translate(-50%,-14px) scale(1.8); opacity: 0; }
+  }
+
+  /* Ripple around cup */
+  .cup.filled {
+    animation: cupPop .5s ease;
+  }
+  @keyframes cupPop {
+    0%   { transform: scale(.75); }
+    30%  { transform: scale(1.18); }
+    55%  { transform: scale(.9); }
+    75%  { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+  .water-label {
+    font-size: .85rem;
+    color: var(--text-light);
+    letter-spacing: .03em;
+    white-space: nowrap;
+  }
+
+  /* Sleep tracker */
+  .sleep-tracker {
+    display: flex; align-items: center; gap: 8px;
+    font-size: .95rem; color: var(--text);
+  }
+  .sleep-tracker input[type="time"] {
+    width: 105px; padding: 6px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 7px; font-size: .88rem;
+    font-family: inherit; background: var(--bg);
+    color: var(--text); outline: none; text-align: center;
+  }
+  .sleep-tracker input[type="time"]:focus { border-color: var(--accent); }
+  .sleep-icon { font-size: 1.35rem; opacity: .5; }
+  .sleep-duration {
+    font-size: .9rem; font-weight: 500;
+    color: var(--accent); min-width: 56px;
+    text-align: center; letter-spacing: .03em;
+  }
+
+  /* Health toggle */
+  .health-toggle {
+    position: absolute; right: 14px; top: 50%;
+    transform: translateY(-50%);
+    width: 30px; height: 30px;
+    border: none; background: var(--card-bg);
+    border-radius: 50%; cursor: pointer;
+    font-size: .75rem; color: var(--text-light);
+    display: flex; align-items: center; justify-content: center;
+    transition: all var(--transition); opacity: .4; z-index: 5;
+  }
+  .health-toggle:hover { opacity: 1; background: var(--accent-bg); }
+  .health-collapsed .health-toggle {
+    top: auto; bottom: -16px; transform: none;
+    opacity: .7; box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    background: var(--card-bg);
+  }
+
+  /* ---- Toggle buttons ---- */
+  .toggle-btns {
+    position: absolute; top: 12px; right: 12px;
+    display: flex; gap: 8px; z-index: 3;
+  }
+  .toggle-btn {
+    width: 38px; height: 38px;
+    border: 1.5px solid var(--border);
+    background: var(--card-bg); border-radius: 50%;
+    cursor: pointer; font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all var(--transition); color: var(--text-light); opacity: .5;
+  }
+  .toggle-btn:hover { opacity: 1; background: var(--accent-bg); }
+  .toggle-btn.off { opacity: .2; background: transparent; border-color: transparent; }
+  .toggle-btn.off:hover { opacity: .45; }
+
+  /* Calendar hidden state */
+  .cal-hidden .right-panel { display: none; }
+  .cal-hidden .divider { display: none; }
+  .cal-hidden .left-panel { flex: 100; }
+
+  /* ---- Floating snowflakes ---- */
+  .snowflakes-layer {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+    border-radius: 16px;
+  }
+  .snow-particle {
+    position: absolute;
+    opacity: 0;
+    animation: snowFall linear infinite;
+    /* colored translucent — overridden per particle via inline style */
+  }
+  @keyframes snowFall {
+    0%   { opacity: 0; transform: translateY(-30px) rotate(0deg); }
+    8%   { opacity: .8; }
+    85%  { opacity: .5; }
+    100% { opacity: 0; transform: translateY(100vh) rotate(360deg); }
+  }
+  /* ---- Left Panel (78%) ---- */
+  .left-panel {
+    flex: 78;
+    display: flex;
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ---- Todo column ---- */
+  .todo-col {
+    flex: 63;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* ---- Pomodoro column ---- */
+  .pomo-col {
+    flex: 37;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 18px 26px;
+    border-left: 1.5px solid var(--divider);
+    gap: 14px;
+    overflow-y: auto;
+    min-width: 150px;
+  }
+  .pomo-col.pomo-running {
+    background: #fdfaf7;
+  }
+  .pomo-clock-icon {
+    font-size: 3.4rem;
+    color: #b8ccdd;
+    opacity: .5;
+    line-height: 1;
+    filter: grayscale(.2);
+    margin-bottom: 6px;
+  }
+  .pomo-label {
+    font-size: .72rem;
+    letter-spacing: .1em;
+    color: var(--text-light);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .pomo-display {
+    font-size: 3.4rem;
+    font-weight: 400;
+    font-family: "SF Mono", "JetBrains Mono", "Consolas", monospace;
+    letter-spacing: .08em;
+    color: var(--text);
+    text-align: center;
+    line-height: 1;
+  }
+  .pomo-col.pomo-running .pomo-display { color: #b07050; }
+  .pomo-controls { display: flex; gap: 12px; }
+  .pomo-btn-start {
+    width: 56px; height: 56px;
+    border: none; border-radius: 50%;
+    cursor: pointer; font-size: 1.3rem;
+    background: #a8bfd4; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    transition: all var(--transition);
+    box-shadow: 0 3px 14px rgba(168,191,212,.35);
+  }
+  .pomo-btn-start:hover { background: #8ea8c0; transform: scale(1.05); }
+  .pomo-col.pomo-running .pomo-btn-start {
+    background: #c09070;
+    box-shadow: 0 2px 10px rgba(192,144,112,.3);
+  }
+  .pomo-col.pomo-running .pomo-btn-start:hover { background: #a87858; }
+  .pomo-btn-reset {
+    width: 38px; height: 38px;
+    border: 1.5px solid var(--border); border-radius: 50%;
+    cursor: pointer; font-size: .8rem;
+    background: #fff; color: var(--text-light);
+    display: flex; align-items: center; justify-content: center;
+    transition: all var(--transition);
+  }
+  .pomo-btn-reset:hover { background: #f0f2f5; color: var(--text); }
+  .pomo-config {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 12px; width: 100%;
+  }
+  .pomo-mode-toggle {
+    display: flex; border-radius: 22px;
+    overflow: hidden; border: 1.5px solid var(--border);
+  }
+  .pomo-mode-btn {
+    padding: 5px 14px; border: none; background: #fff;
+    font-size: .72rem; cursor: pointer;
+    color: var(--text-light);
+    transition: all var(--transition);
+    letter-spacing: .03em; white-space: nowrap;
+  }
+  .pomo-mode-btn.active { background: #a8bfd4; color: #fff; }
+  .pomo-time-inputs {
+    display: flex; align-items: center; gap: 4px;
+    font-size: .8rem; color: var(--text-light);
+  }
+  .pomo-time-inputs input {
+    width: 46px; padding: 6px 2px;
+    border: 1.5px solid var(--border); border-radius: 6px;
+    text-align: center; font-size: .9rem;
+    font-family: inherit; background: #fff;
+    color: var(--text); outline: none;
+  }
+  .pomo-time-inputs input:focus { border-color: #a8bfd4; }
+  .todo-header {
+    padding: 26px 26px 14px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .todo-header h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+    color: var(--text);
+  }
+  .header-snowflake {
+    font-size: 1.65rem;
+    color: var(--snowflake);
+    line-height: 1;
+    animation: drift 6s ease-in-out infinite;
+  }
+  @keyframes drift {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25%      { transform: translateY(-2px) rotate(8deg); }
+    75%      { transform: translateY(2px) rotate(-6deg); }
+  }
+
+  .input-row {
+    padding: 0 26px 14px;
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .input-row input {
+    flex: 1;
+    padding: 12px 18px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 1.15rem;
+    outline: none;
+    background: var(--bg);
+    color: var(--text);
+    transition: border-color var(--transition);
+  }
+  .input-row input:focus { border-color: var(--accent); }
+  .input-row input::placeholder { color: var(--text-light); }
+  .btn-add {
+    padding: 12px 22px;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: .03em;
+    transition: background var(--transition), transform var(--transition);
+    flex-shrink: 0;
+  }
+  .btn-add:hover { background: #6d8296; }
+  .btn-add:active { transform: scale(.97); }
+
+  /* Todo list */
+  .todo-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 22px 18px;
+  }
+  .todo-scroll::-webkit-scrollbar { width: 5px; }
+  .todo-scroll::-webkit-scrollbar-thumb { background: var(--divider); border-radius: 5px; }
+  .todo-scroll::-webkit-scrollbar-track { background: transparent; }
+
+  .todo-group {
+    margin-bottom: 4px;
+    border-radius: var(--radius);
+  }
+  .parent-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    transition: background var(--transition);
+    cursor: pointer;
+  }
+  .parent-row:hover { background: var(--accent-bg); }
+
+  .expand-arrow {
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .8rem;
+    color: var(--text-light);
+    transition: transform var(--transition);
+    flex-shrink: 0;
+  }
+  .todo-group.open > .parent-row .expand-arrow { transform: rotate(90deg); }
+
+  .parent-check {
+    width: 20px; height: 20px;
+    border-radius: 4px;
+    border: 2px solid var(--accent-soft);
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .7rem;
+    color: transparent;
+    transition: all var(--transition);
+  }
+  .parent-check.done { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .parent-text {
+    flex: 1;
+    font-size: 1.15rem;
+    color: var(--text);
+    transition: color var(--transition);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .parent-text.done {
+    color: var(--text-light);
+    text-decoration: line-through;
+    text-decoration-color: var(--accent-soft);
+  }
+  .parent-badge {
+    font-size: .95rem; color: var(--text-light); flex-shrink: 0;
+  }
+  .parent-add-sub {
+    width: 24px; height: 24px;
+    border: 2px solid var(--accent-soft);
+    background: transparent; border-radius: 50%;
+    cursor: pointer; font-size: .8rem;
+    color: transparent;
+    transition: all var(--transition);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; opacity: 0;
+    font-weight: 400; line-height: 1;
+  }
+  .parent-row:hover .parent-add-sub { opacity: .5; color: var(--accent); }
+  .parent-add-sub:hover {
+    opacity: 1 !important;
+    background: var(--accent);
+    color: #fff !important;
+    border-color: var(--accent);
+  }
+
+  .parent-delete {
+    width: 30px; height: 30px;
+    border: none; background: transparent; border-radius: 50%;
+    cursor: pointer; font-size: .95rem;
+    color: transparent;
+    transition: all var(--transition);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; opacity: 0;
+  }
+  .parent-row:hover .parent-delete { opacity: 1; color: var(--text-light); }
+  .parent-delete:hover { color: var(--danger-hover); background: #fef5f5; }
+
+  /* Sub items */
+  .sub-list {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height .3s ease;
+    padding-left: 48px;
+  }
+  .todo-group.open .sub-list { max-height: 600px; }
+  .sub-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 14px;
+    border-radius: 6px;
+    transition: background var(--transition);
+    font-size: 1.05rem;
+  }
+  .sub-row:hover { background: var(--accent-bg); }
+  .sub-check {
+    width: 18px; height: 18px;
+    border-radius: 3px;
+    border: 2px solid var(--accent-soft);
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .625rem;
+    color: transparent;
+    transition: all var(--transition);
+  }
+  .sub-check.done { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .sub-text { flex: 1; color: var(--text); transition: color var(--transition); }
+  .sub-text.done { color: var(--text-light); text-decoration: line-through; text-decoration-color: var(--accent-soft); }
+  .sub-delete {
+    width: 26px; height: 26px;
+    border: none; background: transparent; border-radius: 50%;
+    cursor: pointer; font-size: .8rem;
+    color: transparent;
+    transition: all var(--transition);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; opacity: 0;
+  }
+  .sub-row:hover .sub-delete { opacity: 1; color: var(--text-light); }
+  .sub-delete:hover { color: var(--danger-hover); background: #fef5f5; }
+
+  .sub-row-editing { padding: 4px 12px; }
+  .sub-input-inline {
+    flex: 1;
+    padding: 6px 12px;
+    border: 2px solid var(--accent);
+    border-radius: 6px;
+    font-size: 1rem;
+    outline: none;
+    background: #fff;
+    color: var(--text);
+    width: 100%;
+    font-family: inherit;
+    box-shadow: 0 0 0 3px rgba(168,191,212,.15);
+  }
+
+  .empty-daylist {
+    text-align: center; padding: 40px 0;
+    color: var(--text-light); font-size: 1.05rem; letter-spacing: .04em;
+  }
+
+  /* ---- Vertical divider ---- */
+  .divider {
+    width: 1.5px;
+    background: var(--divider);
+    flex-shrink: 0;
+  }
+
+  /* ---- Right Panel: Calendar ---- */
+  .right-panel {
+    flex: 22;
+    min-width: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 18px 12px 16px;
+    position: relative;
+    z-index: 1;
+    overflow-y: auto;
+  }
+  .right-panel::-webkit-scrollbar { width: 4px; }
+  .right-panel::-webkit-scrollbar-thumb { background: var(--divider); border-radius: 4px; }
+  .right-panel::-webkit-scrollbar-track { background: transparent; }
+
+  .cal-year-header {
+    font-size: .95rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: var(--text);
+    margin-bottom: 14px;
+    position: sticky;
+    top: 0;
+    background: var(--card-bg);
+    padding: 6px 0;
+    z-index: 2;
+    width: 100%;
+    text-align: center;
+  }
+
+  .cal-month-group {
+    width: 100%;
+    margin-bottom: 12px;
+    padding: 6px 4px;
+    border-radius: 7px;
+    transition: background var(--transition);
+  }
+  .cal-month-group.current-month { background: var(--accent-bg); }
+
+  .cal-month-name {
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .05em;
+    color: var(--text);
+    margin-bottom: 4px;
+    text-align: center;
+    text-transform: uppercase;
+  }
+  .cal-month-group.current-month .cal-month-name { color: var(--accent); }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px 1px;
+    font-size: .68rem;
+    text-align: center;
+  }
+  .cal-dow { color: var(--text-light); padding: 3px 0 2px; font-weight: 500; font-size: .6rem; }
+  .cal-day {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    color: var(--text);
+    transition: all var(--transition);
+    cursor: default;
+    font-size: .65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .cal-day.today { background: var(--accent); color: #fff; font-weight: 600; }
+  .cal-day.selected {
+    box-shadow: inset 0 0 0 2px var(--accent);
+    font-weight: 600;
+  }
+  .cal-day.today.selected {
+    box-shadow: inset 0 0 0 2px #fff;
+  }
+  .cal-day.has-data::after {
+    content: '';
+    position: absolute;
+    bottom: 1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .cal-day.today.has-data::after { background: #fff; }
+  .cal-day[data-date] { cursor: pointer; }
+  .cal-day[data-date]:hover { background: var(--accent-bg); }
+  .cal-day.other-month { color: #d5dbe3; }
+
+  /* Toast */
+  .toast-container {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    z-index: 999;
+    display: flex; flex-direction: column; gap: 6px;
+    align-items: center; pointer-events: none;
+  }
+  .toast {
+    padding: 12px 26px;
+    background: #2c3e50; color: #fff;
+    border-radius: 22px;
+    font-size: 1rem; letter-spacing: .03em;
+    animation: toastIn .25s ease, toastOut .25s ease 1.6s forwards;
+  }
+  @keyframes toastIn  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-8px); } }
+</style>
+</head>
+<body>
+
+<div class="app" id="appRoot">
+  <!-- Toggle buttons -->
+  <div class="toggle-btns">
+    <button class="toggle-btn" id="btnToggleCal" title="隐藏/显示日历">📅</button>
+  </div>
+
+  <!-- Health Bar -->
+  <div class="health-bar" id="healthBar">
+    <div class="health-bar-inner" id="healthBarInner">
+      <!-- Water tracker -->
+      <div class="water-tracker" id="waterTracker">
+        <span class="cup" data-cup="1" title="500ml"><span class="cup-glass"><span class="cup-water"></span></span></span>
+        <span class="cup" data-cup="2" title="500ml"><span class="cup-glass"><span class="cup-water"></span></span></span>
+        <span class="cup" data-cup="3" title="500ml"><span class="cup-glass"><span class="cup-water"></span></span></span>
+        <span class="water-label">0 / 1500ml</span>
+      </div>
+      <!-- Sleep tracker -->
+      <div class="sleep-tracker">
+        <span class="sleep-icon">🌙</span>
+        <input type="time" id="sleepBed" title="睡觉时间">
+        <span style="font-size:.65rem;color:var(--text-light)">→</span>
+        <input type="time" id="sleepWake" title="起床时间">
+        <span class="sleep-icon">☀️</span>
+        <span class="sleep-duration" id="sleepDuration">--</span>
+      </div>
+    </div>
+    <button class="health-toggle" id="healthToggle" title="收起/展开">▲</button>
+  </div>
+
+  <!-- Main row -->
+  <div class="main-row">
+    <!-- Snowflake particles -->
+    <div class="snowflakes-layer" id="snowflakesLayer"></div>
+
+    <!-- Left Panel -->
+    <div class="left-panel">
+      <!-- Todo column -->
+      <div class="todo-col">
+        <div class="todo-header">
+          <span class="header-snowflake">❄</span>
+          <h2>待办</h2>
+        </div>
+        <div class="input-row">
+          <input type="text" id="mainInput" placeholder="添加待办…" maxlength="120" autocomplete="off">
+          <button class="btn-add" id="addMainBtn">添加</button>
+        </div>
+        <div class="todo-scroll" id="todoScroll"></div>
+      </div>
+
+      <!-- Pomodoro column -->
+      <div class="pomo-col" id="pomoCol">
+        <div class="pomo-clock-icon">🕐</div>
+        <div class="pomo-label">计时器</div>
+        <div class="pomo-display" id="pomoDisplay">25:00</div>
+        <div class="pomo-controls">
+          <button class="pomo-btn-start" id="pomoBtn" title="开始 / 暂停">▶</button>
+          <button class="pomo-btn-reset" id="pomoReset" title="重置">↺</button>
+        </div>
+        <div class="pomo-config">
+          <div class="pomo-mode-toggle" id="pomoModeToggle">
+            <button class="pomo-mode-btn active" data-mode="countdown">倒计时</button>
+            <button class="pomo-mode-btn" data-mode="stopwatch">正计时</button>
+          </div>
+          <div class="pomo-time-inputs" id="pomoTimeInputs">
+            <input type="number" id="pomoInpMin" value="25" min="0" max="599" title="分钟">
+            <span>:</span>
+            <input type="number" id="pomoInpSec" value="0" min="0" max="59" title="秒">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div class="divider"></div>
+
+    <!-- Right: Calendar -->
+    <div class="right-panel" id="rightPanel"></div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+(function() {
+  const STORAGE  = 'todo_app_v5';
+  const S_STORAGE = 'todo_settings_v1';
+  const WEEKDAYS = ['日','一','二','三','四','五','六'];
+
+  // --- State ---
+  let allData = {};            // { "YYYY-MM-DD": { groups:[], health:{waterCups,sleepBedTime,sleepWakeTime} } }
+  let activeDate = '';         // "YYYY-MM-DD"
+  // UI toggles (global, not per-day)
+  let calHidden = false;
+  let healthCollapsed = false;
+
+  function todayStr() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
+  function getDayData(dateStr) {
+    if (!allData[dateStr]) {
+      allData[dateStr] = { groups: [], health: { waterCups: 0, sleepBedTime: '', sleepWakeTime: '' } };
+    }
+    return allData[dateStr];
+  }
+
+  function getCurrentGroups() {
+    return getDayData(activeDate).groups;
+  }
+
+  function getCurrentHealth() {
+    return getDayData(activeDate).health;
+  }
+
+  // --- DOM ---
+  const $mainInput   = document.getElementById('mainInput');
+  const $addMainBtn  = document.getElementById('addMainBtn');
+  const $scroll      = document.getElementById('todoScroll');
+  const $right       = document.getElementById('rightPanel');
+  const $toast       = document.getElementById('toastContainer');
+  const $snowLayer   = document.getElementById('snowflakesLayer');
+  // Health & toggles
+  const $appRoot     = document.getElementById('appRoot');
+  const $healthBar   = document.getElementById('healthBar');
+  const $healthToggle = document.getElementById('healthToggle');
+  const $waterTracker = document.getElementById('waterTracker');
+  const $sleepBed    = document.getElementById('sleepBed');
+  const $sleepWake   = document.getElementById('sleepWake');
+  const $sleepDur    = document.getElementById('sleepDuration');
+  const $btnToggleCal = document.getElementById('btnToggleCal');
+
+  // --- Snowflakes ---
+  function createSnowflakes() {
+    const shapes = ['❄','❅','❆','✦','❋'];
+    // Very subtle translucent ice tones — barely there
+    const colors = [
+      'rgba(170,200,225,.55)', 'rgba(160,195,220,.5)', 'rgba(180,205,230,.52)',
+      'rgba(165,198,225,.48)', 'rgba(175,200,228,.5)',
+    ];
+    let html = '';
+    for (let i = 0; i < 18; i++) {
+      const shape = shapes[Math.floor(Math.random() * shapes.length)];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const left = Math.random() * 95;
+      const size = 13 + Math.random() * 16;
+      const dur = 12 + Math.random() * 16;
+      const delay = Math.random() * 16;
+      html += `<span class="snow-particle" style="
+        left:${left}%;
+        font-size:${size}px;
+        animation-duration:${dur}s;
+        animation-delay:${delay}s;
+        color:${color};
+      ">${shape}</span>`;
+    }
+    $snowLayer.innerHTML = html;
+  }
+
+  // --- Persistence ---
+  function loadAllData() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORAGE));
+      if (raw && typeof raw === 'object') {
+        allData = raw;
+        // Ensure all date entries have proper structure
+        Object.keys(allData).forEach(k => {
+          const d = allData[k];
+          if (!d.groups) d.groups = [];
+          if (!d.health) d.health = { waterCups: 0, sleepBedTime: '', sleepWakeTime: '' };
+          d.groups.forEach(g => {
+            if (g._open === undefined) g._open = true;
+          });
+        });
+      }
+    } catch(e) { allData = {}; }
+
+    // Migrate from old storage keys (v4)
+    if (Object.keys(allData).length === 0) {
+      try {
+        const oldTodos = JSON.parse(localStorage.getItem('todo_app_v4'));
+        const oldHealth = JSON.parse(localStorage.getItem('health_data_v1'));
+        const ts = todayStr();
+        const day = { groups: [], health: { waterCups: 0, sleepBedTime: '', sleepWakeTime: '' } };
+        if (Array.isArray(oldTodos) && oldTodos.length > 0) {
+          day.groups = oldTodos.map(g => ({...g}));
+        }
+        if (oldHealth) {
+          day.health.waterCups = oldHealth.waterCups || 0;
+          day.health.sleepBedTime = oldHealth.sleepBedTime || '';
+          day.health.sleepWakeTime = oldHealth.sleepWakeTime || '';
+        }
+        allData[ts] = day;
+        saveAllData();
+        // Clear old keys
+        localStorage.removeItem('todo_app_v4');
+        localStorage.removeItem('timer_settings_v2');
+        localStorage.removeItem('health_data_v1');
+      } catch(e) {}
+    }
+  }
+
+  function saveAllData() {
+    localStorage.setItem(STORAGE, JSON.stringify(allData));
+  }
+
+  function loadSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem(S_STORAGE));
+      if (s) {
+        calHidden = s.calHidden || false;
+        healthCollapsed = s.healthCollapsed || false;
+      }
+    } catch(e) {}
+  }
+  function saveSettings() {
+    localStorage.setItem(S_STORAGE, JSON.stringify({ calHidden, healthCollapsed }));
+  }
+
+  // --- Helpers ---
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+  function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function toast(msg) {
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    $toast.appendChild(el);
+    setTimeout(() => el.remove(), 2000);
+  }
+  function fmtTimer(sec) {
+    const m = Math.floor(Math.abs(sec) / 60);
+    const s = Math.abs(sec) % 60;
+    const sign = sec < 0 ? '-' : '';
+    return sign + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  }
+
+  // --- Pomodoro Timer ---
+  let pomoMode = 'countdown';    // 'countdown' | 'stopwatch'
+  let pomoSeconds = 25 * 60;
+  let pomoRunning = false;
+  let pomoInterval = null;
+
+  function updatePomoDisplay() {
+    const display = document.getElementById('pomoDisplay');
+    if (display) display.textContent = fmtTimer(pomoSeconds);
+    const btn = document.getElementById('pomoBtn');
+    if (btn) btn.textContent = pomoRunning ? '⏸' : '▶';
+    const col = document.getElementById('pomoCol');
+    if (col) col.classList.toggle('pomo-running', pomoRunning);
+  }
+
+  function applyPomoUI() {
+    document.querySelectorAll('.pomo-mode-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === pomoMode);
+    });
+    const timeInputs = document.getElementById('pomoTimeInputs');
+    if (timeInputs) timeInputs.style.display = pomoMode === 'countdown' ? 'flex' : 'none';
+    if (pomoMode === 'countdown') {
+      const m = Math.floor(pomoSeconds / 60);
+      const s = pomoSeconds % 60;
+      document.getElementById('pomoInpMin').value = m;
+      document.getElementById('pomoInpSec').value = s;
+    }
+    updatePomoDisplay();
+  }
+
+  function setPomoMode(mode) {
+    pomoMode = mode;
+    stopPomodoro();
+    if (mode === 'countdown') {
+      pomoSeconds = (parseInt(document.getElementById('pomoInpMin').value)||0)*60 + (parseInt(document.getElementById('pomoInpSec').value)||0);
+      if (pomoSeconds <= 0) { pomoSeconds = 25*60; }
+    } else {
+      pomoSeconds = 0;
+    }
+    applyPomoUI();
+  }
+
+  function togglePomodoro() {
+    if (pomoRunning) { pausePomodoro(); return; }
+    if (pomoMode === 'countdown' && pomoSeconds <= 0) {
+      pomoSeconds = (parseInt(document.getElementById('pomoInpMin').value)||0)*60 + (parseInt(document.getElementById('pomoInpSec').value)||0);
+      if (pomoSeconds <= 0) { pomoSeconds = 25*60; }
+    }
+    pomoRunning = true;
+    updatePomoDisplay();
+    pomoInterval = setInterval(() => {
+      if (pomoMode === 'countdown') {
+        pomoSeconds--;
+        if (pomoSeconds <= 0) { pomoSeconds = 0; pausePomodoro(); toast('计时结束！'); }
+      } else {
+        pomoSeconds++;
+      }
+      updatePomoDisplay();
+    }, 1000);
+  }
+
+  function pausePomodoro() {
+    pomoRunning = false;
+    clearInterval(pomoInterval);
+    pomoInterval = null;
+    updatePomoDisplay();
+  }
+
+  function stopPomodoro() {
+    pausePomodoro();
+    if (pomoMode === 'countdown') {
+      pomoSeconds = (parseInt(document.getElementById('pomoInpMin').value)||0)*60 + (parseInt(document.getElementById('pomoInpSec').value)||0);
+      if (pomoSeconds <= 0) { pomoSeconds = 25*60; document.getElementById('pomoInpMin').value = 25; document.getElementById('pomoInpSec').value = 0; }
+    } else {
+      pomoSeconds = 0;
+    }
+    updatePomoDisplay();
+  }
+
+  function resetPomodoro() { stopPomodoro(); }
+
+  function updatePomoFromInputs() {
+    if (pomoMode === 'countdown' && !pomoRunning) {
+      pomoSeconds = (parseInt(document.getElementById('pomoInpMin').value)||0)*60 + (parseInt(document.getElementById('pomoInpSec').value)||0);
+      updatePomoDisplay();
+    }
+  }
+
+  function pauseAllTimers() {
+    pausePomodoro();
+  }
+
+  // --- Health (per-day) ---
+  function toggleWaterCup(n) {
+    const h = getCurrentHealth();
+    if (n <= h.waterCups) {
+      h.waterCups = n - 1;
+    } else if (n === h.waterCups + 1) {
+      h.waterCups = n;
+    }
+    renderWaterCups();
+    saveAllData();
+  }
+
+  function renderWaterCups() {
+    const h = getCurrentHealth();
+    const cups = $waterTracker.querySelectorAll('.cup');
+    cups.forEach((cup, i) => {
+      cup.classList.toggle('filled', i < h.waterCups);
+    });
+    $waterTracker.querySelector('.water-label').textContent =
+      (h.waterCups * 500) + ' / 1500ml';
+  }
+
+  function updateSleepDuration() {
+    const h = getCurrentHealth();
+    h.sleepBedTime = $sleepBed.value;
+    h.sleepWakeTime = $sleepWake.value;
+    if (h.sleepBedTime && h.sleepWakeTime) {
+      const [bh, bm] = h.sleepBedTime.split(':').map(Number);
+      const [wh, wm] = h.sleepWakeTime.split(':').map(Number);
+      let bedMin = bh * 60 + bm;
+      let wakeMin = wh * 60 + wm;
+      if (wakeMin <= bedMin) wakeMin += 24 * 60;
+      const diff = wakeMin - bedMin;
+      const hr = Math.floor(diff / 60);
+      const mn = diff % 60;
+      $sleepDur.textContent = hr + 'h' + (mn > 0 ? ' ' + mn + 'm' : '');
+    } else {
+      $sleepDur.textContent = '--';
+    }
+    saveAllData();
+  }
+
+  function applyHealthUI() {
+    const h = getCurrentHealth();
+    renderWaterCups();
+    $sleepBed.value = h.sleepBedTime;
+    $sleepWake.value = h.sleepWakeTime;
+    updateSleepDuration();
+    if (calHidden) {
+      $appRoot.classList.add('cal-hidden');
+      $btnToggleCal.classList.add('off');
+    }
+    if (healthCollapsed) {
+      $appRoot.classList.add('health-collapsed');
+      $healthToggle.textContent = '▼';
+    }
+  }
+
+  function toggleCalendar() {
+    calHidden = !calHidden;
+    $appRoot.classList.toggle('cal-hidden', calHidden);
+    $btnToggleCal.classList.toggle('off', calHidden);
+    saveSettings();
+  }
+
+  function toggleHealthBar() {
+    healthCollapsed = !healthCollapsed;
+    $appRoot.classList.toggle('health-collapsed', healthCollapsed);
+    $healthToggle.textContent = healthCollapsed ? '▼' : '▲';
+    saveSettings();
+  }
+
+  // --- Date switching ---
+  function switchToDate(dateStr) {
+    pauseAllTimers();
+    saveAllData();
+    activeDate = dateStr;
+    applyHealthUI();
+    renderAll();
+  }
+
+  // --- Todo actions (per-day) ---
+  function addGroup(text) {
+    const t = text.trim();
+    if (!t) return;
+    const groups = getCurrentGroups();
+    groups.unshift({ id: uid(), text: t, done: false, subs: [] });
+    saveAllData();
+    renderAll();
+    $mainInput.value = '';
+    $mainInput.focus();
+  }
+  function toggleGroup(id) {
+    const groups = getCurrentGroups();
+    const g = groups.find(g => g.id === id);
+    if (!g) return;
+    const target = !g.done;
+    g.done = target;
+    g.subs.forEach(s => s.done = target);
+    saveAllData();
+    renderAll();
+  }
+  function deleteGroup(id) {
+    let groups = getCurrentGroups();
+    const day = getDayData(activeDate);
+    day.groups = groups.filter(g => g.id !== id);
+    saveAllData();
+    renderAll();
+    toast('已删除');
+  }
+  function addSub(groupId, text) {
+    const groups = getCurrentGroups();
+    const g = groups.find(g => g.id === groupId);
+    if (!g) return;
+    const t = text.trim();
+    if (!t) return;
+    g.subs.push({ id: uid(), text: t, done: false });
+    if (g.done) g.done = false;
+    saveAllData();
+    renderAll();
+  }
+  function toggleSub(groupId, subId) {
+    const groups = getCurrentGroups();
+    const g = groups.find(g => g.id === groupId);
+    if (!g) return;
+    const s = g.subs.find(s => s.id === subId);
+    if (!s) return;
+    s.done = !s.done;
+    g.done = g.subs.length > 0 && g.subs.every(s => s.done);
+    saveAllData();
+    renderAll();
+  }
+  function deleteSub(groupId, subId) {
+    const groups = getCurrentGroups();
+    const g = groups.find(g => g.id === groupId);
+    if (!g) return;
+    g.subs = g.subs.filter(s => s.id !== subId);
+    g.done = g.subs.length > 0 && g.subs.every(s => s.done);
+    saveAllData();
+    renderAll();
+  }
+
+  // --- Render ---
+  function renderAll() {
+    renderDaylist();
+    renderCalendar();
+  }
+
+  function renderDaylist() {
+    const groups = getCurrentGroups();
+    if (groups.length === 0) {
+      $scroll.innerHTML = '<div class="empty-daylist">空空如也，添加待办吧</div>';
+      return;
+    }
+    let html = '';
+    groups.forEach(g => {
+      const open = g._open !== false;
+      const doneAllSubs = g.subs.length > 0 && g.subs.every(s => s.done);
+      const parentDone = g.done || doneAllSubs;
+      html += `<div class="todo-group${open ? ' open' : ''}" data-gid="${g.id}">`;
+      html += `<div class="parent-row" data-gid="${g.id}">`;
+      html += `<span class="expand-arrow">▶</span>`;
+      html += `<span class="parent-check${parentDone ? ' done' : ''}" data-action="toggleGroup" data-gid="${g.id}">✓</span>`;
+      html += `<span class="parent-text${parentDone ? ' done' : ''}">${esc(g.text)}</span>`;
+      html += `<span class="parent-badge">${g.subs.length ? g.subs.filter(s=>s.done).length + '/' + g.subs.length : ''}</span>`;
+      html += `<button class="parent-add-sub" data-action="focusSubInput" data-gid="${g.id}" title="添加子项">+</button>`;
+      html += `<button class="parent-delete" data-action="deleteGroup" data-gid="${g.id}">×</button>`;
+      html += `</div>`;
+
+      html += `<div class="sub-list">`;
+      g.subs.forEach(s => {
+        html += `<div class="sub-row" data-sid="${s.id}">`;
+        html += `<span class="sub-check${s.done ? ' done' : ''}" data-action="toggleSub" data-gid="${g.id}" data-sid="${s.id}">✓</span>`;
+        html += `<span class="sub-text${s.done ? ' done' : ''}">${esc(s.text)}</span>`;
+        html += `<button class="sub-delete" data-action="deleteSub" data-gid="${g.id}" data-sid="${s.id}">×</button>`;
+        html += `</div>`;
+      });
+      html += `</div></div>`;
+    });
+    $scroll.innerHTML = html;
+  }
+
+  function renderCalendar() {
+    const y = new Date().getFullYear();
+    const months = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+    const realToday = new Date();
+    const realYear = realToday.getFullYear();
+    const realMonth = realToday.getMonth();
+    const realDate = realToday.getDate();
+    const todayKey = todayStr();
+
+    let html = `<div class="cal-year-header">${y}</div>`;
+
+    for (let m = 0; m < 12; m++) {
+      const first = new Date(y, m, 1);
+      const last = new Date(y, m + 1, 0);
+      const startDow = first.getDay();
+      const daysInMonth = last.getDate();
+      const prevLast = new Date(y, m, 0).getDate();
+      const isCurrentMonth = realYear === y && realMonth === m;
+
+      html += `<div class="cal-month-group${isCurrentMonth ? ' current-month' : ''}">`;
+      html += `<div class="cal-month-name">${months[m]}</div>`;
+      html += `<div class="cal-grid">`;
+      WEEKDAYS.forEach(d => html += `<span class="cal-dow">${d}</span>`);
+      for (let i = startDow - 1; i >= 0; i--) html += `<span class="cal-day other-month">${prevLast - i}</span>`;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = y + '-' + String(m+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+        const dayData = allData[dateStr];
+        const hasData = dayData && (dayData.groups.length > 0 || dayData.health.waterCups > 0 || dayData.health.sleepBedTime);
+        let cls = 'cal-day';
+        if (isCurrentMonth && d === realDate) cls += ' today';
+        if (dateStr === activeDate) cls += ' selected';
+        if (hasData) cls += ' has-data';
+        html += `<span class="${cls}" data-date="${dateStr}">${d}</span>`;
+      }
+      const totalCells = startDow + daysInMonth;
+      const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+      for (let d = 1; d <= remaining; d++) html += `<span class="cal-day other-month">${d}</span>`;
+      html += `</div></div>`;
+    }
+
+    $right.innerHTML = html;
+  }
+
+  // --- Events ---
+  function handleClick(e) {
+    const target = e.target.closest('[data-action]');
+    if (!target) {
+      // Calendar day click
+      const calDay = e.target.closest('.cal-day[data-date]');
+      if (calDay) {
+        switchToDate(calDay.dataset.date);
+        return;
+      }
+      // Sub-row click → collapse parent group
+      const subRow = e.target.closest('.sub-row');
+      if (subRow) {
+        const groupEl = subRow.closest('.todo-group');
+        if (groupEl && groupEl.classList.contains('open')) {
+          groupEl.classList.remove('open');
+          const gid = groupEl.dataset.gid;
+          const groups = getCurrentGroups();
+          const g = groups.find(g => g.id === gid);
+          if (g) { g._open = false; saveAllData(); }
+        }
+        return;
+      }
+      // Parent row expand/collapse
+      const row = e.target.closest('.parent-row');
+      if (row) {
+        const gid = row.dataset.gid;
+        const groupEl = row.closest('.todo-group');
+        if (groupEl) {
+          groupEl.classList.toggle('open');
+          const groups = getCurrentGroups();
+          const g = groups.find(g => g.id === gid);
+          if (g) { g._open = groupEl.classList.contains('open'); saveAllData(); }
+        }
+      }
+      return;
+    }
+    const action = target.dataset.action;
+    const gid = target.dataset.gid;
+    const sid = target.dataset.sid;
+    switch (action) {
+      case 'toggleGroup': toggleGroup(gid); break;
+      case 'deleteGroup': deleteGroup(gid); break;
+      case 'toggleSub':   toggleSub(gid, sid); break;
+      case 'deleteSub':   deleteSub(gid, sid); break;
+      case 'focusSubInput': {
+        // Expand group first
+        const groupEl = document.querySelector(`.todo-group[data-gid="${gid}"]`);
+        if (groupEl && !groupEl.classList.contains('open')) {
+          groupEl.classList.add('open');
+          const groups = getCurrentGroups();
+          const g = groups.find(g => g.id === gid);
+          if (g) { g._open = true; saveAllData(); }
+        }
+        // Add a temporary editable sub-item row
+        const subList = groupEl ? groupEl.querySelector('.sub-list') : null;
+        if (!subList) break;
+        const inputId = 'inlineSubInput_' + gid;
+        const tempRow = document.createElement('div');
+        tempRow.className = 'sub-row sub-row-editing';
+        tempRow.innerHTML = `<input type="text" class="sub-input-inline" id="${inputId}" data-gid="${gid}" placeholder="新子项…" maxlength="80" autocomplete="off">`;
+        subList.appendChild(tempRow);
+        const inp = document.getElementById(inputId);
+        if (inp) {
+          inp.focus();
+          const save = () => {
+            const val = inp.value.trim();
+            if (val) addSub(gid, val);
+            tempRow.remove();
+          };
+          inp.addEventListener('blur', save, { once: true });
+          inp.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter') { inp.blur(); }
+            if (ev.key === 'Escape') { inp.value = ''; inp.blur(); }
+          });
+        }
+        break;
+      }
+      case 'addSubBtn': {
+        const input = $scroll.querySelector(`.sub-input[data-gid="${gid}"]`);
+        if (input) { addSub(gid, input.value); input.value = ''; input.focus(); }
+        break;
+      }
+    }
+  }
+
+  function handleKeydown(e) {
+    if (e.target === $mainInput && e.key === 'Enter') { addGroup($mainInput.value); return; }
+    if (e.target.classList.contains('sub-input') && e.key === 'Enter') {
+      addSub(e.target.dataset.gid, e.target.value);
+      e.target.value = ''; e.target.focus();
+    }
+  }
+
+  // --- Init ---
+  function init() {
+    loadAllData();
+    loadSettings();
+    activeDate = todayStr();
+    createSnowflakes();
+
+    // Apply health UI state
+    applyHealthUI();
+
+    renderAll();
+
+    // Scroll calendar to current month
+    setTimeout(() => {
+      const curMonth = $right.querySelector('.cal-month-group.current-month');
+      if (curMonth) curMonth.scrollIntoView({ block: 'center' });
+    }, 100);
+
+    applyPomoUI();
+
+    $scroll.addEventListener('click', handleClick);
+    $right.addEventListener('click', handleClick);
+    document.addEventListener('keydown', handleKeydown);
+    $addMainBtn.addEventListener('click', () => addGroup($mainInput.value));
+
+    // Health & toggle events
+    $waterTracker.addEventListener('click', (e) => {
+      const cup = e.target.closest('.cup');
+      if (cup) toggleWaterCup(parseInt(cup.dataset.cup));
+    });
+    $sleepBed.addEventListener('change', updateSleepDuration);
+    $sleepWake.addEventListener('change', updateSleepDuration);
+    $healthToggle.addEventListener('click', toggleHealthBar);
+    $btnToggleCal.addEventListener('click', toggleCalendar);
+
+    // Pomodoro events
+    document.getElementById('pomoBtn').addEventListener('click', togglePomodoro);
+    document.getElementById('pomoReset').addEventListener('click', resetPomodoro);
+    document.getElementById('pomoInpMin').addEventListener('input', updatePomoFromInputs);
+    document.getElementById('pomoInpSec').addEventListener('input', updatePomoFromInputs);
+    document.getElementById('pomoModeToggle').addEventListener('click', (e) => {
+      const btn = e.target.closest('.pomo-mode-btn');
+      if (btn) setPomoMode(btn.dataset.mode);
+    });
+
+    $mainInput.focus();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
