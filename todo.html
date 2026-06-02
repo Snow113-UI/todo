@@ -767,7 +767,99 @@
   }
   @keyframes toastIn  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-8px); } }
-</style>
+
+  /* ---- Mobile responsive ---- */
+  @media (max-width: 768px) {
+    body { padding: 0; align-items: stretch; }
+    .app {
+      height: 100vh; height: 100dvh; max-width: 100%; min-height: 0;
+      border-radius: 0; flex-direction: column;
+      box-shadow: none;
+    }
+
+    /* Health bar: slim strip */
+    .health-bar {
+      flex: 0 0 auto; padding: 8px 10px; gap: 6px;
+      border-bottom: 1px solid var(--divider);
+    }
+    .health-bar-inner { gap: 10px; }
+    .cup-glass { width: 26px; height: 34px; border-width: 2.5px; }
+    .cup-water::before, .cup-water::after { animation-duration: 1.2s, 1.5s; }
+    .water-label { font-size: .72rem; }
+    .sleep-tracker { font-size: .78rem; gap: 3px; }
+    .sleep-tracker input[type="time"] { width: 64px; font-size: .72rem; padding: 3px 2px; border-radius: 5px; }
+    .sleep-icon { font-size: 1rem; }
+    .sleep-duration { font-size: .72rem; min-width: 38px; }
+    .health-toggle { width: 22px; height: 22px; font-size: .55rem; right: 4px; }
+
+    /* Pomodoro: slim bar between health and todos */
+    .pomo-col {
+      flex: 0 0 auto; flex-direction: row; flex-wrap: wrap;
+      align-items: center; justify-content: center;
+      gap: 10px; padding: 6px 10px; min-width: 0;
+      border-left: none; border-bottom: 1px solid var(--divider);
+      background: #fafbfc;
+    }
+    .pomo-clock-icon { font-size: 1.3rem; margin: 0; }
+    .pomo-label { display: none; }
+    .pomo-display { font-size: 1.5rem; letter-spacing: .04em; }
+    .pomo-controls { gap: 8px; }
+    .pomo-btn-start { width: 38px; height: 38px; font-size: .9rem; box-shadow: none; }
+    .pomo-btn-reset { width: 28px; height: 28px; font-size: .6rem; }
+    .pomo-config { flex-direction: row; gap: 8px; width: auto; }
+    .pomo-mode-toggle { border-radius: 16px; }
+    .pomo-mode-btn { padding: 3px 8px; font-size: .58rem; }
+    .pomo-time-inputs { font-size: .65rem; gap: 2px; }
+    .pomo-time-inputs input { width: 30px; font-size: .68rem; padding: 2px 1px; border-radius: 4px; }
+
+    /* Stack todo + pomo vertically */
+    .left-panel { flex: 1; flex-direction: column; }
+    .left-panel .pomo-col { order: -1; flex: 0 0 auto; }
+    .left-panel .todo-col { flex: 1; }
+
+    /* Main row: stack vertically, no calendar */
+    .main-row { flex: 1; flex-direction: column; }
+    .right-panel { display: none; }
+    .divider { display: none; }
+    .left-panel { flex: 1; }
+
+    /* Todo: full screen hero */
+    .todo-col { flex: 1; }
+    .todo-header { padding: 16px 16px 8px; gap: 8px; }
+    .todo-header h2 { font-size: 1.4rem; }
+    .header-snowflake { font-size: 1.2rem; }
+    .input-row { padding: 0 16px 10px; gap: 8px; }
+    .input-row input { font-size: 1.05rem; padding: 12px 14px; border-radius: 10px; }
+    .btn-add { font-size: .95rem; padding: 12px 18px; border-radius: 10px; }
+    .todo-scroll { padding: 0 12px 12px; }
+
+    /* Bigger touch targets for parent rows */
+    .parent-row { padding: 12px 10px; gap: 10px; border-radius: 10px; }
+    .parent-text { font-size: 1.05rem; }
+    .expand-arrow { width: 22px; height: 22px; font-size: .7rem; }
+    .parent-check { width: 20px; height: 20px; border-radius: 5px; font-size: .65rem; border-width: 2px; }
+    .parent-badge { font-size: .82rem; }
+    .parent-add-sub { width: 22px; height: 22px; font-size: .7rem; border-width: 2px; }
+    .parent-delete { width: 28px; height: 28px; font-size: .85rem; }
+    .parent-row:hover .parent-add-sub { opacity: .6; color: var(--accent); }
+    .parent-row:hover .parent-delete { opacity: .8; color: var(--text-light); }
+
+    /* Sub rows */
+    .sub-list { padding-left: 40px; }
+    .sub-row { font-size: .95rem; padding: 8px 8px; gap: 8px; }
+    .sub-check { width: 18px; height: 18px; font-size: .6rem; border-width: 2px; }
+    .sub-delete { width: 24px; height: 24px; font-size: .7rem; }
+    .sub-input-inline { font-size: .9rem; padding: 8px 10px; }
+    .empty-daylist { font-size: .95rem; padding: 32px 0; }
+
+    /* Toggle and toast */
+    .toggle-btns { top: 6px; right: 6px; gap: 4px; }
+    .toggle-btn { width: 32px; height: 32px; font-size: .9rem; }
+    .toast { font-size: .88rem; padding: 10px 22px; border-radius: 24px; }
+
+    /* Calendar toggle: show button to reveal calendar */
+    .cal-hidden .right-panel { display: none !important; }
+  }</style>
 </head>
 <body>
 
