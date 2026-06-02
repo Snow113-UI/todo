@@ -286,7 +286,7 @@
 
   /* ---- Toggle buttons ---- */
   .toggle-btns {
-    position: absolute; top: 12px; right: 12px;
+    position: absolute; bottom: 16px; right: 16px;
     display: flex; gap: 8px; z-index: 3;
   }
   .toggle-btn {
@@ -871,7 +871,7 @@
     .empty-daylist { font-size: .95rem; padding: 32px 0; }
 
     /* Toggle and toast */
-    .toggle-btns { top: 6px; right: 6px; gap: 4px; z-index: 101; }
+    .toggle-btns { top: auto; bottom: 20px; right: 16px; gap: 4px; z-index: 101; }
     .toggle-btn { width: 32px; height: 32px; font-size: .9rem; }
     .toast { font-size: .88rem; padding: 10px 22px; border-radius: 24px; }
   }</style>
@@ -1268,21 +1268,18 @@
   function toggleCalendar() {
     const isMobile = window.innerWidth <= 768;
     if (isMobile) {
-      // Mobile: slide panel independently of desktop state
+      // Mobile: slide panel in/out
       const overlay = document.getElementById('calOverlay');
       const right = document.getElementById('rightPanel');
       if (overlay && right) {
+        // Force remove any cal-hidden restrictions
+        $appRoot.classList.remove('cal-hidden');
         const wasOpen = right.classList.contains('cal-mobile-open');
-        if (wasOpen) {
-          overlay.classList.remove('cal-mobile-open');
-          right.classList.remove('cal-mobile-open');
-        } else {
-          overlay.classList.add('cal-mobile-open');
-          right.classList.add('cal-mobile-open');
-        }
+        overlay.classList.toggle('cal-mobile-open', !wasOpen);
+        right.classList.toggle('cal-mobile-open', !wasOpen);
       }
     } else {
-      // Desktop: use cal-hidden
+      // Desktop
       calHidden = !calHidden;
       $appRoot.classList.toggle('cal-hidden', calHidden);
       $btnToggleCal.classList.toggle('off', calHidden);
