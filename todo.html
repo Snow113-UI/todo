@@ -817,11 +817,29 @@
     .left-panel .pomo-col { order: -1; flex: 0 0 auto; }
     .left-panel .todo-col { flex: 1; }
 
-    /* Main row: stack vertically, no calendar */
+    /* Main row: stack vertically */
     .main-row { flex: 1; flex-direction: column; }
-    .right-panel { display: none; }
     .divider { display: none; }
     .left-panel { flex: 1; }
+
+    /* Calendar: slide-in panel from right */
+    .right-panel {
+      display: flex !important;
+      position: fixed; top: 0; right: 0; bottom: 0;
+      width: 85vw; max-width: 340px; z-index: 100;
+      background: var(--card-bg); border-radius: 16px 0 0 16px;
+      box-shadow: -4px 0 30px rgba(0,0,0,.25);
+      transform: translateX(100%); transition: transform .3s ease;
+      padding: 20px 14px; overflow-y: auto;
+    }
+    .right-panel.cal-mobile-open { transform: translateX(0); }
+    .cal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 99;
+      background: rgba(0,0,0,.35);
+    }
+    .cal-overlay.cal-mobile-open { display: block; }
+    .cal-hidden .right-panel { transform: translateX(100%); }
+    .cal-hidden .cal-overlay { display: none; }
 
     /* Todo: full screen hero */
     .todo-col { flex: 1; }
@@ -853,12 +871,9 @@
     .empty-daylist { font-size: .95rem; padding: 32px 0; }
 
     /* Toggle and toast */
-    .toggle-btns { top: 6px; right: 6px; gap: 4px; }
+    .toggle-btns { top: 6px; right: 6px; gap: 4px; z-index: 101; }
     .toggle-btn { width: 32px; height: 32px; font-size: .9rem; }
     .toast { font-size: .88rem; padding: 10px 22px; border-radius: 24px; }
-
-    /* Calendar toggle: show button to reveal calendar */
-    .cal-hidden .right-panel { display: none !important; }
   }</style>
 </head>
 <body>
@@ -943,6 +958,7 @@
   </div>
 </div>
 
+<div class="cal-overlay" id="calOverlay"></div>
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
@@ -1253,6 +1269,13 @@
     calHidden = !calHidden;
     $appRoot.classList.toggle('cal-hidden', calHidden);
     $btnToggleCal.classList.toggle('off', calHidden);
+    // Mobile: toggle slide panel + overlay
+    const overlay = document.getElementById('calOverlay');
+    const right = document.getElementById('rightPanel');
+    if (overlay && right) {
+      overlay.classList.toggle('cal-mobile-open', !calHidden);
+      right.classList.toggle('cal-mobile-open', !calHidden);
+    }
     saveSettings();
   }
 
@@ -1544,6 +1567,8 @@
     $sleepWake.addEventListener('change', updateSleepDuration);
     $healthToggle.addEventListener('click', toggleHealthBar);
     $btnToggleCal.addEventListener('click', toggleCalendar);
+    const calOverlay = document.getElementById('calOverlay');
+    if (calOverlay) calOverlay.addEventListener('click', toggleCalendar);
 
     // Pomodoro events
     document.getElementById('pomoBtn').addEventListener('click', togglePomodoro);
@@ -1560,6 +1585,11 @@
 
   init();
 })();
+
+// Service Worker for offline support
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>
